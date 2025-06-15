@@ -43,3 +43,4 @@ examples/*/*.go
 # Test output
 test-output/
 temp/
+demo/

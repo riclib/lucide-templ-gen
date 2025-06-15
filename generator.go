@@ -387,21 +387,21 @@ func generateFiles(icons []IconData, config Config) ([]string, error) {
 	var createdFiles []string
 
 	// Generate main icons file
-	iconsFile := filepath.Join(config.OutputDir, "icons_templ.go")
+	iconsFile := filepath.Join(config.OutputDir, "icons.templ")
 	if err := generateIconsFile(icons, config, iconsFile); err != nil {
 		return nil, fmt.Errorf("failed to generate icons file: %w", err)
 	}
 	createdFiles = append(createdFiles, iconsFile)
 
 	// Generate registry file
-	registryFile := filepath.Join(config.OutputDir, "registry_templ.go")
+	registryFile := filepath.Join(config.OutputDir, "registry.templ")
 	if err := generateRegistryFile(icons, config, registryFile); err != nil {
 		return nil, fmt.Errorf("failed to generate registry file: %w", err)
 	}
 	createdFiles = append(createdFiles, registryFile)
 
 	// Generate categories file
-	categoriesFile := filepath.Join(config.OutputDir, "categories_templ.go")
+	categoriesFile := filepath.Join(config.OutputDir, "categories.templ")
 	if err := generateCategoriesFile(icons, config, categoriesFile); err != nil {
 		return nil, fmt.Errorf("failed to generate categories file: %w", err)
 	}
