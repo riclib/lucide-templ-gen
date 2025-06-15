@@ -1,5 +1,105 @@
 # Release Notes
 
+## v1.2.0 - 2025-06-15
+
+### 🚀 Major Performance & Search Enhancements
+
+**Game-Changing Performance Improvement: Git-Based Fetching**
+- Replaced individual HTTP requests with fast `git clone` approach
+- **10x faster generation**: From minutes to seconds (~3s for 1600+ icons)
+- More reliable and efficient icon fetching
+
+**Powerful Runtime Search & Filter System**
+- **Rich metadata integration**: Fetches tags, categories, and contributors from Lucide's JSON files
+- **Intelligent search**: Relevance-based results with exact, tag, category, and partial matching
+- **Component slices**: Get search results as ready-to-use `[]templ.Component`
+- **Advanced filtering**: Search by categories, tags, relevance scores, and limits
+
+### ✨ New Features
+
+**Search Functionality (`-search` flag)**
+```go
+// Create search instance
+search := NewIconSearch()
+
+// Incremental search with relevance scoring
+results := search.Search("arrow") // Returns SearchResult with relevance
+
+// Get results as ready-to-render components
+icons := search.GetSearchResultIcons("user", attrs)
+
+// Category and tag-based access
+navIcons := search.GetCategoryIcons("navigation", attrs)
+searchIcons := search.GetTagIcons("magnifying", attrs)
+
+// Advanced filtering
+results := search.SearchWithOptions("user", SearchOptions{
+    Categories: []string{"social", "ui"},
+    MaxResults: 10,
+    MinRelevance: 50,
+})
+```
+
+**Rich Metadata Support**
+- Icon tags from Lucide (e.g., "forward", "next", "direction", "east")
+- Official Lucide categories (e.g., "arrows", "navigation", "text")
+- Contributor information
+- Fallback to custom categorization system
+
+**Performance Optimizations**
+- Optional search functionality (only adds overhead when requested)
+- Precomputed search indexes for fast lookups
+- Git shallow clone for minimal network overhead
+- Efficient local file processing
+
+### 🎯 Perfect for Icon Picker UIs
+
+The search system is designed for building dynamic icon picker interfaces:
+
+```templ
+templ IconPicker(searchQuery string) {
+    if search := NewIconSearch() {
+        for _, icon := range search.GetSearchResultIcons(searchQuery, templ.Attributes{"class": "w-6 h-6"}) {
+            <div class="icon-item" onclick="selectIcon()">
+                @icon
+            </div>
+        }
+    }
+}
+```
+
+### 📁 File Structure
+
+**Basic Generation (default):**
+- `icons.templ` - Individual icon components
+- `registry.templ` - Type-safe IconName constants
+- `categories.templ` - Category helpers
+
+**With Search (`-search` flag):**
+- All basic files PLUS
+- `search.templ` - Complete search/filter system with metadata
+
+### 🔄 CLI Updates
+
+```bash
+# Fast basic generation (no metadata)
+lucide-gen -output ./icons -package icons -categories "navigation,actions"
+
+# With full search capabilities (includes metadata)
+lucide-gen -output ./icons -package icons -categories "navigation,actions" -search
+
+# All icons with search (perfect for icon pickers)
+lucide-gen -output ./icons -package icons -search
+```
+
+### 🐛 Bug Fixes
+
+- Fixed template compilation issues with missing function definitions
+- Improved error handling for missing metadata files
+- Better Git dependency validation and error messages
+
+---
+
 ## v1.1.0 - 2025-06-15
 
 ### 🎉 Major Improvements

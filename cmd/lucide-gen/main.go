@@ -9,18 +9,19 @@ import (
 	lucidegen "github.com/riclib/lucide-templ-gen"
 )
 
-const version = "1.1.0"
+const version = "1.2.0"
 
 func main() {
 	var (
-		outputDir   = flag.String("output", ".", "Output directory")
-		packageName = flag.String("package", "icons", "Package name")
-		prefix      = flag.String("prefix", "", "Function name prefix")
-		categories  = flag.String("categories", "", "Comma-separated categories to include (empty = all)")
-		dryRun      = flag.Bool("dry-run", false, "Show what would be generated without creating files")
-		verbose     = flag.Bool("verbose", false, "Enable verbose output")
-		showVersion = flag.Bool("version", false, "Show version information")
-		help        = flag.Bool("help", false, "Show help information")
+		outputDir     = flag.String("output", ".", "Output directory")
+		packageName   = flag.String("package", "icons", "Package name")
+		prefix        = flag.String("prefix", "", "Function name prefix")
+		categories    = flag.String("categories", "", "Comma-separated categories to include (empty = all)")
+		includeSearch = flag.Bool("search", false, "Include search functionality (fetches metadata)")
+		dryRun        = flag.Bool("dry-run", false, "Show what would be generated without creating files")
+		verbose       = flag.Bool("verbose", false, "Enable verbose output")
+		showVersion   = flag.Bool("version", false, "Show version information")
+		help          = flag.Bool("help", false, "Show help information")
 	)
 
 	flag.Parse()
@@ -46,12 +47,13 @@ func main() {
 
 	// Create config
 	config := lucidegen.Config{
-		OutputDir:   *outputDir,
-		PackageName: *packageName,
-		Prefix:      *prefix,
-		Categories:  categoryList,
-		DryRun:      *dryRun,
-		Verbose:     *verbose,
+		OutputDir:     *outputDir,
+		PackageName:   *packageName,
+		Prefix:        *prefix,
+		Categories:    categoryList,
+		IncludeSearch: *includeSearch,
+		DryRun:        *dryRun,
+		Verbose:       *verbose,
 	}
 
 	// Validate config
@@ -136,6 +138,7 @@ Options:
   -package string     Package name (default "icons")
   -prefix string      Function name prefix (default "")
   -categories string  Comma-separated categories to include (default: all)
+  -search            Include search functionality (fetches metadata)
   -dry-run           Show what would be generated without creating files
   -verbose           Enable verbose output
   -version           Show version information

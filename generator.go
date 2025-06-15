@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -15,23 +14,27 @@ import (
 
 // Config holds the configuration for icon generation
 type Config struct {
-	OutputDir   string   // Output directory path
-	PackageName string   // Go package name
-	Prefix      string   // Function name prefix
-	Categories  []string // Icon categories to include (empty = all)
-	DryRun      bool     // Preview without generating files
-	Verbose     bool     // Enable verbose logging
+	OutputDir     string   // Output directory path
+	PackageName   string   // Go package name
+	Prefix        string   // Function name prefix
+	Categories    []string // Icon categories to include (empty = all)
+	DryRun        bool     // Preview without generating files
+	Verbose       bool     // Enable verbose logging
+	IncludeSearch bool     // Include search functionality (requires metadata fetching)
 }
 
 // IconData represents a parsed Lucide icon
 type IconData struct {
-	Name       string `json:"name"`
-	FuncName   string `json:"func_name"`
-	ViewBox    string `json:"view_box"`
-	Content    string `json:"content"`
-	Category   string `json:"category"`
-	Keywords   []string `json:"keywords"`
-	Deprecated bool   `json:"deprecated"`
+	Name         string   `json:"name"`
+	FuncName     string   `json:"func_name"`
+	ViewBox      string   `json:"view_box"`
+	Content      string   `json:"content"`
+	Category     string   `json:"category"`
+	Tags         []string `json:"tags"`
+	LucideCategories []string `json:"lucide_categories"`
+	Contributors []string `json:"contributors"`
+	Keywords     []string `json:"keywords"` // Deprecated: use Tags instead
+	Deprecated   bool     `json:"deprecated"`
 }
 
 // GenerationResult contains information about the generation process
@@ -50,12 +53,12 @@ type SVGElement struct {
 	Content string `xml:",innerxml"`
 }
 
-// GitHubFile represents a file in GitHub API response
-type GitHubFile struct {
-	Name        string `json:"name"`
-	Path        string `json:"path"`
-	DownloadURL string `json:"download_url"`
-	Type        string `json:"type"`
+// IconMetadata represents the JSON metadata for a Lucide icon
+type IconMetadata struct {
+	Schema       string   `json:"$schema"`
+	Contributors []string `json:"contributors"`
+	Tags         []string `json:"tags"`
+	Categories   []string `json:"categories"`
 }
 
 var (
@@ -157,7 +160,7 @@ func Generate(config Config) (*GenerationResult, error) {
 	}
 
 	// Fetch icons from GitHub
-	icons, err := fetchLucideIcons(config.Verbose)
+	icons, err := fetchLucideIcons(config.Verbose, config.IncludeSearch)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch icons: %w", err)
 	}
@@ -215,42 +218,61 @@ func Generate(config Config) (*GenerationResult, error) {
 	return result, nil
 }
 
-// fetchLucideIcons retrieves icon data from the Lucide GitHub repository
-func fetchLucideIcons(verbose bool) ([]IconData, error) {
+// fetchLucideIcons retrieves icon data from the Lucide GitHub repository via git clone
+func fetchLucideIcons(verbose bool, includeMetadata bool) ([]IconData, error) {
 	if verbose {
-		fmt.Println("Fetching icon list from GitHub...")
+		fmt.Println("Cloning Lucide repository...")
 	}
 
-	// Get file list from GitHub API
-	resp, err := http.Get("https://api.github.com/repos/lucide-icons/lucide/contents/icons")
+	// Create temporary directory for git clone
+	tempDir, err := os.MkdirTemp("", "lucide-clone-*")
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch file list: %w", err)
+		return nil, fmt.Errorf("failed to create temp directory: %w", err)
 	}
-	defer resp.Body.Close()
+	defer os.RemoveAll(tempDir) // Clean up
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
+	// Clone the repository (shallow clone for speed)
+	cmd := exec.Command("git", "clone", "--depth", "1", "https://github.com/lucide-icons/lucide.git", tempDir)
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("failed to clone repository: %w", err)
 	}
 
-	var files []GitHubFile
-	if err := json.NewDecoder(resp.Body).Decode(&files); err != nil {
-		return nil, fmt.Errorf("failed to decode file list: %w", err)
+	iconsDir := filepath.Join(tempDir, "icons")
+	
+	// Read all SVG files
+	files, err := os.ReadDir(iconsDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read icons directory: %w", err)
 	}
 
 	var icons []IconData
-	for i, file := range files {
-		if !strings.HasSuffix(file.Name, ".svg") {
+	svgCount := 0
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), ".svg") {
+			svgCount++
+		}
+	}
+
+	if verbose {
+		fmt.Printf("Found %d icons to process\n", svgCount)
+	}
+
+	processed := 0
+	for _, file := range files {
+		if !strings.HasSuffix(file.Name(), ".svg") {
 			continue
 		}
 
-		if verbose && i%50 == 0 {
-			fmt.Printf("Processing icon %d/%d...\n", i+1, len(files))
+		processed++
+		if verbose && processed%50 == 0 {
+			fmt.Printf("Processing icon %d/%d...\n", processed, svgCount)
 		}
 
-		iconName := strings.TrimSuffix(file.Name, ".svg")
+		iconName := strings.TrimSuffix(file.Name(), ".svg")
+		svgPath := filepath.Join(iconsDir, file.Name())
 		
-		// Download and parse SVG
-		iconData, err := downloadAndParseSVG(file.DownloadURL, iconName)
+		// Parse SVG and optionally JSON metadata from local files
+		iconData, err := parseLocalIcon(svgPath, iconName, iconsDir, includeMetadata)
 		if err != nil {
 			if verbose {
 				fmt.Printf("Warning: failed to process %s: %v\n", iconName, err)
@@ -261,42 +283,62 @@ func fetchLucideIcons(verbose bool) ([]IconData, error) {
 		icons = append(icons, *iconData)
 	}
 
+	if verbose {
+		fmt.Printf("Successfully processed %d icons\n", len(icons))
+	}
+
 	return icons, nil
 }
 
-// downloadAndParseSVG downloads and parses an SVG file
-func downloadAndParseSVG(url, name string) (*IconData, error) {
-	resp, err := http.Get(url)
+// parseLocalIcon parses an SVG file and optionally its JSON metadata from local files
+func parseLocalIcon(svgPath, iconName, iconsDir string, includeMetadata bool) (*IconData, error) {
+	// Read SVG file
+	svgData, err := os.ReadFile(svgPath)
 	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
-	}
-
-	svgData, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read SVG file: %w", err)
 	}
 
 	var svg SVGElement
 	if err := xml.Unmarshal(svgData, &svg); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse SVG: %w", err)
 	}
 
-	// Determine category
-	category := categorizeIcon(name)
+	// Read JSON metadata if requested
+	var metadata *IconMetadata
+	if includeMetadata {
+		jsonPath := filepath.Join(iconsDir, iconName+".json")
+		if jsonData, err := os.ReadFile(jsonPath); err == nil {
+			metadata = &IconMetadata{}
+			if err := json.Unmarshal(jsonData, metadata); err != nil {
+				// If JSON parsing fails, use empty metadata
+				metadata = &IconMetadata{}
+			}
+		} else {
+			// If JSON file doesn't exist, use empty metadata
+			metadata = &IconMetadata{}
+		}
+	} else {
+		metadata = &IconMetadata{}
+	}
+
+	// Determine category (fallback if no Lucide categories)
+	category := categorizeIcon(iconName)
+	if len(metadata.Categories) > 0 {
+		category = metadata.Categories[0] // Use first Lucide category as primary
+	}
 
 	return &IconData{
-		Name:     name,
-		FuncName: toFunctionName(name),
-		ViewBox:  svg.ViewBox,
-		Content:  strings.TrimSpace(svg.Content),
-		Category: category,
+		Name:             iconName,
+		FuncName:         toFunctionName(iconName),
+		ViewBox:          svg.ViewBox,
+		Content:          strings.TrimSpace(svg.Content),
+		Category:         category,
+		Tags:             metadata.Tags,
+		LucideCategories: metadata.Categories,
+		Contributors:     metadata.Contributors,
 	}, nil
 }
+
 
 // categorizeIcon determines the category of an icon based on its name
 func categorizeIcon(iconName string) string {
@@ -406,6 +448,15 @@ func generateFiles(icons []IconData, config Config) ([]string, error) {
 		return nil, fmt.Errorf("failed to generate categories file: %w", err)
 	}
 	createdFiles = append(createdFiles, categoriesFile)
+
+	// Generate search file (optional)
+	if config.IncludeSearch {
+		searchFile := filepath.Join(config.OutputDir, "search.templ")
+		if err := generateSearchFile(icons, config, searchFile); err != nil {
+			return nil, fmt.Errorf("failed to generate search file: %w", err)
+		}
+		createdFiles = append(createdFiles, searchFile)
+	}
 
 	return createdFiles, nil
 }
