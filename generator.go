@@ -443,7 +443,7 @@ func generateFiles(icons []IconData, config Config) ([]string, error) {
 	createdFiles = append(createdFiles, registryFile)
 
 	// Generate categories file
-	categoriesFile := filepath.Join(config.OutputDir, "categories.templ")
+	categoriesFile := filepath.Join(config.OutputDir, "categories.go")
 	if err := generateCategoriesFile(icons, config, categoriesFile); err != nil {
 		return nil, fmt.Errorf("failed to generate categories file: %w", err)
 	}

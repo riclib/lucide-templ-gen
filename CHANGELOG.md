@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2025-06-15
+
+### Fixed
+- Removed unnecessary import statements from generated .templ files
+- Fixed categories file generation - now correctly generates as categories.go instead of categories.templ
+
+## [1.2.0] - 2024-XX-XX
+
 ### Added
 - Initial release of lucide-templ-gen
 - Type-safe Templ components for Lucide Icons
