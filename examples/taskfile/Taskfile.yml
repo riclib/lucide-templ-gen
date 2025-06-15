@@ -1,0 +1,66 @@
+# Example Taskfile integration for Lucide icon generation
+
+version: '3'
+
+vars:
+  ICONS_DIR: "./web/templates/components"
+  ICONS_PACKAGE: "components"
+
+tasks:
+  # Icon management tasks
+  icons:generate:
+    desc: Generate Lucide icon components
+    cmds:
+      - mkdir -p {{.ICONS_DIR}}
+      - lucide-gen -output {{.ICONS_DIR}} -package {{.ICONS_PACKAGE}} -verbose
+      - templ generate {{.ICONS_DIR}}/icons_templ.go
+      - templ generate {{.ICONS_DIR}}/registry_templ.go
+      - templ generate {{.ICONS_DIR}}/categories_templ.go
+
+  icons:generate:essential:
+    desc: Generate only essential icon categories
+    cmds:
+      - mkdir -p {{.ICONS_DIR}}
+      - lucide-gen -output {{.ICONS_DIR}} -package {{.ICONS_PACKAGE}} -categories "navigation,actions,ui,files" -verbose
+      - templ generate {{.ICONS_DIR}}/icons_templ.go
+      - templ generate {{.ICONS_DIR}}/registry_templ.go
+      - templ generate {{.ICONS_DIR}}/categories_templ.go
+
+  icons:update:
+    desc: Update icons to latest Lucide version
+    cmds:
+      - rm -rf {{.ICONS_DIR}}/icons_templ.go {{.ICONS_DIR}}/registry_templ.go {{.ICONS_DIR}}/categories_templ.go
+      - task: icons:generate
+
+  icons:preview:
+    desc: Preview what icons would be generated
+    cmds:
+      - lucide-gen -output {{.ICONS_DIR}} -package {{.ICONS_PACKAGE}} -dry-run -verbose
+
+  icons:clean:
+    desc: Remove generated icon files
+    cmds:
+      - rm -f {{.ICONS_DIR}}/icons_templ.go
+      - rm -f {{.ICONS_DIR}}/registry_templ.go
+      - rm -f {{.ICONS_DIR}}/categories_templ.go
+
+  # Build tasks with icon generation
+  build:
+    desc: Build the application with icons
+    deps: [icons:generate]
+    cmds:
+      - go build -o bin/app ./cmd/app
+
+  dev:
+    desc: Run development server with icon generation
+    deps: [icons:generate]
+    cmds:
+      - air -c .air.toml
+
+  # Install tools
+  install:tools:
+    desc: Install required tools
+    cmds:
+      - go install github.com/riclib/lucide-templ-gen/cmd/lucide-gen@latest
+      - go install github.com/a-h/templ/cmd/templ@latest
+      - go install github.com/air-verse/air@latest

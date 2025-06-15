@@ -1,0 +1,67 @@
+package main
+
+import "your-project/icons"
+
+// Example usage of generated icons
+templ HomePage() {
+	<div class="app">
+		<header class="app-header">
+			<nav class="nav">
+				@icons.Home(templ.Attributes{"class": "nav-icon"})
+				<span>Home</span>
+			</nav>
+			<div class="user-menu">
+				@icons.User(templ.Attributes{"class": "user-icon", "size": "24"})
+			</div>
+		</header>
+		
+		<main class="app-main">
+			<div class="actions">
+				<button class="btn btn-primary">
+					@icons.Plus(templ.Attributes{"class": "btn-icon"})
+					Add Item
+				</button>
+				
+				<button class="btn btn-secondary">
+					@icons.Edit(templ.Attributes{"class": "btn-icon"})
+					Edit
+				</button>
+				
+				<button class="btn btn-danger">
+					@icons.Trash2(templ.Attributes{"class": "btn-icon"})
+					Delete
+				</button>
+			</div>
+			
+			<div class="content">
+				<h1>Welcome</h1>
+				<p>This page uses type-safe Lucide icons!</p>
+			</div>
+		</main>
+	</div>
+}
+
+// Dynamic icon usage
+templ IconButton(iconName icons.IconName, label string, onClick string) {
+	<button class="icon-button" onclick={ onClick }>
+		@icons.Icon(iconName, templ.Attributes{"class": "icon"})
+		<span>{ label }</span>
+	</button>
+}
+
+// Example with different icon categories
+templ Dashboard() {
+	<div class="dashboard">
+		<!-- Navigation icons -->
+		@IconButton(icons.IconHome, "Home", "goHome()")
+		@IconButton(icons.IconSettings, "Settings", "openSettings()")
+		
+		<!-- Media icons -->
+		@IconButton(icons.IconPlay, "Play", "startPlayback()")
+		@IconButton(icons.IconPause, "Pause", "pausePlayback()")
+		
+		<!-- Action icons -->
+		@IconButton(icons.IconSave, "Save", "saveData()")
+		@IconButton(icons.IconRefreshCw, "Refresh", "refreshData()")
+	</div>
+}

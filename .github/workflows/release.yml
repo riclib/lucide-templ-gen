@@ -1,0 +1,90 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: 1.21
+
+    - name: Get version
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Build cross-platform binaries
+      run: |
+        mkdir -p dist
+        
+        # Linux
+        GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/lucide-gen-linux-amd64 ./cmd/lucide-gen
+        GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/lucide-gen-linux-arm64 ./cmd/lucide-gen
+        
+        # macOS
+        GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/lucide-gen-darwin-amd64 ./cmd/lucide-gen
+        GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/lucide-gen-darwin-arm64 ./cmd/lucide-gen
+        
+        # Windows
+        GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/lucide-gen-windows-amd64.exe ./cmd/lucide-gen
+        
+        # Create archives
+        cd dist
+        tar czf lucide-gen-linux-amd64.tar.gz lucide-gen-linux-amd64
+        tar czf lucide-gen-linux-arm64.tar.gz lucide-gen-linux-arm64
+        tar czf lucide-gen-darwin-amd64.tar.gz lucide-gen-darwin-amd64
+        tar czf lucide-gen-darwin-arm64.tar.gz lucide-gen-darwin-arm64
+        zip lucide-gen-windows-amd64.zip lucide-gen-windows-amd64.exe
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        if [ -f CHANGELOG.md ]; then
+          # Extract changelog for this version
+          awk '/^## \[?'${GITHUB_REF#refs/tags/v}'\]?/{flag=1; next} /^## /{flag=0} flag' CHANGELOG.md > /tmp/changelog.txt
+        else
+          echo "Changes in this release:" > /tmp/changelog.txt
+          git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD >> /tmp/changelog.txt
+        fi
+        
+        # Set output for GitHub release
+        {
+          echo 'CHANGELOG<<EOF'
+          cat /tmp/changelog.txt
+          echo 'EOF'
+        } >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.VERSION }}
+        name: Release ${{ steps.version.outputs.VERSION }}
+        body: ${{ steps.changelog.outputs.CHANGELOG }}
+        draft: false
+        prerelease: false
+        files: |
+          dist/lucide-gen-linux-amd64.tar.gz
+          dist/lucide-gen-linux-arm64.tar.gz
+          dist/lucide-gen-darwin-amd64.tar.gz
+          dist/lucide-gen-darwin-arm64.tar.gz
+          dist/lucide-gen-windows-amd64.zip
+
+    - name: Update Homebrew Formula (if macOS release)
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: |
+        echo "🍺 Consider updating Homebrew formula at:"
+        echo "https://github.com/Homebrew/homebrew-core/blob/HEAD/Formula/lucide-gen.rb"

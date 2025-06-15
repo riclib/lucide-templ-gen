@@ -1,0 +1,137 @@
+package main
+
+import "github.com/riclib/lucide-templ-gen/examples/advanced/components"
+
+templ HomePage() {
+	<!DOCTYPE html>
+	<html>
+		<head>
+			<title>Lucide Templ Gen - Advanced Example</title>
+			<style>
+				body { font-family: system-ui; margin: 2rem; }
+				.nav { display: flex; gap: 1rem; margin-bottom: 2rem; }
+				.nav a { display: flex; align-items: center; gap: 0.5rem; text-decoration: none; 
+					padding: 0.5rem 1rem; border: 1px solid #ddd; border-radius: 0.25rem; }
+				.nav a:hover { background: #f5f5f5; }
+				.icon { width: 1rem; height: 1rem; }
+				.hero { text-align: center; margin: 4rem 0; }
+				.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; }
+				.feature { padding: 1.5rem; border: 1px solid #ddd; border-radius: 0.5rem; }
+				.feature-icon { width: 2rem; height: 2rem; margin-bottom: 1rem; color: #007acc; }
+			</style>
+		</head>
+		<body>
+			<nav class="nav">
+				<a href="/">
+					@components.Home(templ.Attributes{"class": "icon"})
+					Home
+				</a>
+				<a href="/icons">
+					@components.Star(templ.Attributes{"class": "icon"})
+					Icons
+				</a>
+			</nav>
+
+			<div class="hero">
+				@components.Zap(templ.Attributes{"class": "feature-icon"})
+				<h1>Lucide Templ Generator</h1>
+				<p>Type-safe Lucide icons for your Templ applications</p>
+			</div>
+
+			<div class="features">
+				<div class="feature">
+					@components.Shield(templ.Attributes{"class": "feature-icon"})
+					<h3>Type Safe</h3>
+					<p>All icon names are checked at compile time</p>
+				</div>
+				
+				<div class="feature">
+					@components.Zap(templ.Attributes{"class": "feature-icon"})
+					<h3>Zero Runtime Deps</h3>
+					<p>Pure Go/Templ with no JavaScript required</p>
+				</div>
+				
+				<div class="feature">
+					@components.Package(templ.Attributes{"class": "feature-icon"})
+					<h3>Tree Shakeable</h3>
+					<p>Only generate the icon categories you need</p>
+				</div>
+				
+				<div class="feature">
+					@components.RefreshCw(templ.Attributes{"class": "feature-icon"})
+					<h3>Auto-Updating</h3>
+					<p>Fetch latest icons from Lucide repository</p>
+				</div>
+			</div>
+		</body>
+	</html>
+}
+
+templ IconsPage() {
+	<!DOCTYPE html>
+	<html>
+		<head>
+			<title>Icon Gallery - Lucide Templ Gen</title>
+			<style>
+				body { font-family: system-ui; margin: 2rem; }
+				.nav { display: flex; gap: 1rem; margin-bottom: 2rem; }
+				.nav a { display: flex; align-items: center; gap: 0.5rem; text-decoration: none; 
+					padding: 0.5rem 1rem; border: 1px solid #ddd; border-radius: 0.25rem; }
+				.nav a:hover { background: #f5f5f5; }
+				.icon { width: 1rem; height: 1rem; }
+				.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+				.icon-item { display: flex; flex-direction: column; align-items: center; 
+					padding: 1rem; border: 1px solid #ddd; border-radius: 0.25rem; }
+				.icon-item:hover { background: #f9f9f9; }
+				.icon-large { width: 2rem; height: 2rem; margin-bottom: 0.5rem; }
+				.icon-name { font-size: 0.75rem; color: #666; text-align: center; }
+				.category { margin: 2rem 0 1rem; color: #007acc; border-bottom: 1px solid #ddd; }
+			</style>
+		</head>
+		<body>
+			<nav class="nav">
+				<a href="/">
+					@components.Home(templ.Attributes{"class": "icon"})
+					Home
+				</a>
+				<a href="/icons">
+					@components.Star(templ.Attributes{"class": "icon"})
+					Icons
+				</a>
+			</nav>
+
+			<h1>Icon Gallery</h1>
+			<p>All available icons in this generated set</p>
+
+			<h2 class="category">Navigation Icons</h2>
+			<div class="gallery">
+				for _, iconName := range components.NavigationIcons() {
+					<div class="icon-item">
+						@components.Icon(iconName, templ.Attributes{"class": "icon-large"})
+						<div class="icon-name">{ string(iconName) }</div>
+					</div>
+				}
+			</div>
+
+			<h2 class="category">Action Icons</h2>
+			<div class="gallery">
+				for _, iconName := range components.ActionsIcons() {
+					<div class="icon-item">
+						@components.Icon(iconName, templ.Attributes{"class": "icon-large"})
+						<div class="icon-name">{ string(iconName) }</div>
+					</div>
+				}
+			</div>
+
+			<h2 class="category">UI Icons</h2>
+			<div class="gallery">
+				for _, iconName := range components.UiIcons() {
+					<div class="icon-item">
+						@components.Icon(iconName, templ.Attributes{"class": "icon-large"})
+						<div class="icon-name">{ string(iconName) }</div>
+					</div>
+				}
+			</div>
+		</body>
+	</html>
+}
